@@ -13,6 +13,14 @@ export const AppProvider = ({ children }) => {
 
   useEffect(() => {
     if (isAuthenticated && token) {
+      // Only connect if backend is available
+      const shouldConnect = import.meta.env.VITE_ENABLE_WS !== 'false';
+      
+      if (!shouldConnect) {
+        console.log('WebSocket disabled in development');
+        return;
+      }
+      
       // Connect to WebSocket
       websocket.connect(
         token,
