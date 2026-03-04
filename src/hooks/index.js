@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
 
+// Re-export alert notification hook
+export { useAlertNotifications } from './useAlertNotifications.jsx';
+
 // Custom hook for API calls
 export const useApi = (url, options = {}) => {
   const [data, setData] = useState(null);
