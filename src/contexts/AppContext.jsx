@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import * as websocket from '../services/websocket';
 
@@ -10,6 +10,15 @@ export const AppProvider = ({ children }) => {
   const [alerts, setAlerts] = useState([]);
   const [analytics, setAnalytics] = useState({});
   const [wsConnected, setWsConnected] = useState(false);
+
+  // ── Selected bin for map highlight / alert panel coordination ──
+  const [selectedBin, setSelectedBin] = useState(null);
+
+  const selectBin = useCallback((bin) => {
+    setSelectedBin((prev) => (prev?.id === bin?.id ? null : bin));
+  }, []);
+
+  const clearSelectedBin = useCallback(() => setSelectedBin(null), []);
 
   useEffect(() => {
     if (isAuthenticated && token) {
@@ -61,6 +70,9 @@ export const AppProvider = ({ children }) => {
     analytics,
     setAnalytics,
     wsConnected,
+    selectedBin,
+    selectBin,
+    clearSelectedBin,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

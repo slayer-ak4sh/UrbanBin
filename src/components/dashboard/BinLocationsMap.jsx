@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { MapContainer, Marker, Popup, TileLayer } from 'react-leaflet';
+import { useMemo, useEffect, useRef } from 'react';
+import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -13,6 +13,21 @@ L.Icon.Default.mergeOptions({
 });
 
 const DEFAULT_CENTER = [28.6139, 77.209];
+
+// ── Custom icon for alert-highlighted bins ──────────────────────────
+const createAlertIcon = () =>
+  L.divIcon({
+    className: 'alert-bin-marker',
+    html: `<div class="alert-marker-pin"><div class="alert-marker-inner"></div></div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 30],
+    popupAnchor: [0, -30],
+  });
+
+const alertIcon = createAlertIcon();
+
+// Default icon instance (avoids passing undefined to Marker)
+const defaultIcon = new L.Icon.Default();
 
 const toNumber = (value) => {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -47,7 +62,36 @@ const extractBinLocation = (bin) => {
   };
 };
 
-const BinLocationsMap = ({ bins = [] }) => {
+/**
+ * FlyToSelected — imperatively pans/zooms the map to the selected bin.
+ */
+const FlyToSelected = ({ selectedBin }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!selectedBin) return;
+
+    const lat =
+      selectedBin.lat ??
+      selectedBin.latitude ??
+      selectedBin.location?.lat ??
+      selectedBin.position?.[0];
+    const lng =
+      selectedBin.lng ??
+      selectedBin.lon ??
+      selectedBin.longitude ??
+      selectedBin.location?.lng ??
+      selectedBin.position?.[1];
+
+    if (lat != null && lng != null) {
+      map.flyTo([lat, lng], 16, { duration: 1.2 });
+    }
+  }, [selectedBin, map]);
+
+  return null;
+};
+
+const BinLocationsMap = ({ bins = [], selectedBin = null }) => {
   const markers = useMemo(() => {
     const locations = bins.map(extractBinLocation).filter(Boolean);
 
@@ -69,18 +113,29 @@ const BinLocationsMap = ({ bins = [] }) => {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        {markers.map((marker) => (
-          <Marker key={marker.id} position={marker.position}>
-            <Popup>
-              <div className="min-w-28">
-                <p className="font-semibold text-gray-800">{marker.name}</p>
-                <p className="text-gray-600 text-sm">
-                  Fill Level: {marker.fillLevel == null ? 'N/A' : `${marker.fillLevel}%`}
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+        <FlyToSelected selectedBin={selectedBin} />
+        {markers.map((marker) => {
+          const isSelected = selectedBin && String(selectedBin.id) === String(marker.id);
+          return (
+            <Marker
+              key={marker.id}
+              position={marker.position}
+              icon={isSelected ? alertIcon : defaultIcon}
+            >
+              <Popup>
+                <div className="min-w-28">
+                  <p className="font-semibold text-gray-800">{marker.name}</p>
+                  <p className="text-gray-600 text-sm">
+                    Fill Level: {marker.fillLevel == null ? 'N/A' : `${marker.fillLevel}%`}
+                  </p>
+                  {isSelected && (
+                    <p className="text-red-600 text-xs font-semibold mt-1">⚠ Alert Active</p>
+                  )}
+                </div>
+              </Popup>
+            </Marker>
+          );
+        })}
       </MapContainer>
     </div>
   );
