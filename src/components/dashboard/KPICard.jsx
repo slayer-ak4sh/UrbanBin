@@ -12,45 +12,45 @@ const KPICard = ({
   // Define color schemes with gradients and accents
   const colorConfig = {
     blue: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-200',
+      bg: 'bg-gradient-to-br from-blue-50 to-blue-100',
+      border: 'border-blue-300',
       borderAccent: 'border-t-4 border-t-blue-500',
-      icon: 'bg-blue-100 text-blue-600',
+      icon: 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg',
       accent: 'text-blue-600'
     },
     red: {
-      bg: 'bg-red-50',
-      border: 'border-red-200',
+      bg: 'bg-gradient-to-br from-red-50 to-red-100',
+      border: 'border-red-300',
       borderAccent: 'border-t-4 border-t-red-500',
-      icon: 'bg-red-100 text-red-600',
+      icon: 'bg-gradient-to-br from-red-500 to-red-600 text-white shadow-lg',
       accent: 'text-red-600'
     },
     green: {
-      bg: 'bg-green-50',
-      border: 'border-green-200',
+      bg: 'bg-gradient-to-br from-green-50 to-green-100',
+      border: 'border-green-300',
       borderAccent: 'border-t-4 border-t-green-500',
-      icon: 'bg-green-100 text-green-600',
+      icon: 'bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg',
       accent: 'text-green-600'
     },
     purple: {
-      bg: 'bg-purple-50',
-      border: 'border-purple-200',
+      bg: 'bg-gradient-to-br from-purple-50 to-purple-100',
+      border: 'border-purple-300',
       borderAccent: 'border-t-4 border-t-purple-500',
-      icon: 'bg-purple-100 text-purple-600',
+      icon: 'bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg',
       accent: 'text-purple-600'
     },
     indigo: {
-      bg: 'bg-indigo-50',
-      border: 'border-indigo-200',
+      bg: 'bg-gradient-to-br from-indigo-50 to-indigo-100',
+      border: 'border-indigo-300',
       borderAccent: 'border-t-4 border-t-indigo-500',
-      icon: 'bg-indigo-100 text-indigo-600',
+      icon: 'bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg',
       accent: 'text-indigo-600'
     },
     teal: {
-      bg: 'bg-teal-50',
-      border: 'border-teal-200',
+      bg: 'bg-gradient-to-br from-teal-50 to-teal-100',
+      border: 'border-teal-300',
       borderAccent: 'border-t-4 border-t-teal-500',
-      icon: 'bg-teal-100 text-teal-600',
+      icon: 'bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg',
       accent: 'text-teal-600'
     }
   };
@@ -78,16 +78,16 @@ const KPICard = ({
   }
 
   return (
-    <div className={`${colors.bg} border ${colors.border} ${colors.borderAccent} rounded-lg p-5 md:p-6 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:scale-105 will-change-transform`}>
+    <div className={`${colors.bg} border-2 ${colors.border} ${colors.borderAccent} rounded-xl p-5 md:p-6 shadow-md hover:shadow-2xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 will-change-transform bg-white`}>
       {/* Header with icon */}
       <div className="flex items-start justify-between mb-3 md:mb-4">
         <div className="flex-1 min-w-0">
-          <p className="text-xs sm:text-sm text-gray-600 font-medium leading-tight truncate">
+          <p className="text-xs sm:text-sm text-gray-700 font-semibold leading-tight truncate">
             {title}
           </p>
         </div>
         {icon && (
-          <div className={`${colors.icon} w-9 h-9 md:w-10 md:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ml-2`}>
+          <div className={`${colors.icon} w-10 h-10 md:w-11 md:h-11 rounded-xl flex items-center justify-center flex-shrink-0 ml-2 hover:scale-110 transition-transform`}>
             {icon}
           </div>
         )}
@@ -95,11 +95,11 @@ const KPICard = ({
 
       {/* Main Value - Enhanced styling with responsive font sizes */}
       <div className="mb-3 md:mb-4">
-        <p className={`text-2xl sm:text-3xl md:text-2xl lg:text-3xl font-bold text-gray-800 ${colors.accent} break-words`}>
+        <p className={`text-2xl sm:text-3xl md:text-2xl lg:text-3xl font-extrabold text-gray-800 ${colors.accent} break-words`}>
           {value}
         </p>
         {subText && (
-          <p className="text-xs sm:text-xs text-gray-600 mt-1 md:mt-2 font-medium line-clamp-2">
+          <p className="text-xs sm:text-sm text-gray-600 mt-1 md:mt-2 font-medium line-clamp-2">
             {subText}
           </p>
         )}
@@ -114,7 +114,7 @@ const KPICard = ({
 
       {/* Footer section with enhanced styling */}
       {footer && (
-        <div className="text-xs text-gray-700 pt-2 md:pt-3 border-t border-gray-200">
+        <div className="text-xs text-gray-700 pt-2 md:pt-3 border-t-2 border-gray-200 font-medium">
           {footer}
         </div>
       )}

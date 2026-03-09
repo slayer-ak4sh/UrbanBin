@@ -50,52 +50,52 @@ const AlertBinItem = ({ bin, isSelected, onSelect }) => {
     <div
       onClick={handleClick}
       className={`
-        group relative border rounded-lg transition-all duration-200 cursor-pointer
+        group relative border-2 rounded-xl transition-all duration-300 cursor-pointer overflow-hidden
         ${isSelected
-          ? 'border-red-400 bg-red-50/80 shadow-md shadow-red-100 ring-2 ring-red-200'
-          : 'border-gray-200 bg-white hover:border-red-300 hover:shadow-sm hover:bg-red-50/30'
+          ? 'border-red-500 bg-gradient-to-br from-red-50 to-orange-50 shadow-lg shadow-red-200 ring-2 ring-red-300 scale-105'
+          : 'border-gray-200 bg-white hover:border-red-400 hover:shadow-md hover:bg-gradient-to-br hover:from-red-50/50 hover:to-orange-50/30 hover:scale-102'
         }
       `}
     >
       {/* Main Row */}
-      <div className="flex items-center gap-3 px-3 py-2.5">
+      <div className="flex items-center gap-3 px-4 py-3">
         {/* Status Dot */}
-        <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${getStatusDotColor(fillLevel)}`} />
+        <div className={`w-3 h-3 rounded-full shrink-0 shadow-lg ${getStatusDotColor(fillLevel)}`} />
 
         {/* Bin Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-gray-800 truncate">
+            <span className="text-sm font-bold text-gray-800 truncate">
               {bin.name || `Bin #${bin.id}`}
             </span>
             {/* Priority Badge */}
-            <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${config.bg} ${config.text} ring-1 ${config.ring}`}>
+            <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${config.bg} ${config.text} ring-2 ${config.ring} shadow-sm`}>
               {config.label}
             </span>
           </div>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="flex items-center gap-2 mt-1.5">
             {/* Fill Level Bar */}
-            <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden max-w-20">
+            <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden max-w-24 shadow-inner">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${getFillBarColor(fillLevel)}`}
+                className={`h-full rounded-full transition-all duration-500 ${getFillBarColor(fillLevel)} shadow-sm`}
                 style={{ width: `${Math.min(fillLevel, 100)}%` }}
               />
             </div>
-            <span className="text-xs font-bold text-gray-700 tabular-nums">{fillLevel}%</span>
+            <span className="text-xs font-extrabold text-gray-800 tabular-nums">{fillLevel}%</span>
           </div>
         </div>
 
         {/* Change Arrow */}
         <div className="flex items-center gap-1">
           {bin.change != null && (
-            <span className={`flex items-center text-xs font-semibold ${bin.change > 0 ? 'text-red-600' : 'text-green-600'}`}>
+            <span className={`flex items-center text-xs font-bold ${bin.change > 0 ? 'text-red-600' : 'text-green-600'}`}>
               {bin.change > 0 ? (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 15l7-7 7 7" />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 15l7-7 7 7" />
                 </svg>
               ) : (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
                 </svg>
               )}
               {Math.abs(bin.change)}%
@@ -106,16 +106,16 @@ const AlertBinItem = ({ bin, isSelected, onSelect }) => {
         {/* Expand/Collapse Button */}
         <button
           onClick={handleToggleExpand}
-          className="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all duration-200 hover:scale-110"
           aria-label={expanded ? 'Collapse details' : 'Expand details'}
         >
           <svg
-            className={`w-4 h-4 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+            className={`w-4 h-4 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
       </div>
@@ -126,7 +126,7 @@ const AlertBinItem = ({ bin, isSelected, onSelect }) => {
           expanded ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'
         }`}
       >
-        <div className="px-3 pb-3 pt-1 border-t border-gray-100 space-y-2">
+        <div className="px-4 pb-3 pt-2 border-t-2 border-gray-100 space-y-2.5 bg-gradient-to-b from-gray-50/50 to-transparent">
           {/* Location */}
           <div className="flex items-center gap-2 text-xs text-gray-600">
             <svg className="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,9 +167,9 @@ const AlertBinItem = ({ bin, isSelected, onSelect }) => {
           {/* CTA Button */}
           <button
             onClick={handleClick}
-            className="w-full mt-1 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-colors flex items-center justify-center gap-1.5"
+            className="w-full mt-2 px-3 py-2 text-xs font-bold text-white bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 border-2 border-red-600 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg hover:scale-105"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
