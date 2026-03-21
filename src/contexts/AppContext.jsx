@@ -11,7 +11,6 @@ export const AppProvider = ({ children }) => {
   const [analytics, setAnalytics] = useState({});
   const [wsConnected, setWsConnected] = useState(false);
 
-  // ── Selected bin for map highlight / alert panel coordination ──
   const [selectedBin, setSelectedBin] = useState(null);
 
   const selectBin = useCallback((bin) => {
@@ -22,7 +21,6 @@ export const AppProvider = ({ children }) => {
 
   useEffect(() => {
     if (isAuthenticated && token) {
-      // Only connect if backend is available
       const shouldConnect = import.meta.env.VITE_ENABLE_WS !== 'false';
       
       if (!shouldConnect) {
@@ -30,13 +28,11 @@ export const AppProvider = ({ children }) => {
         return;
       }
       
-      // Connect to WebSocket
       websocket.connect(
         token,
         () => {
           setWsConnected(true);
           
-          // Subscribe to topics
           websocket.subscribe('/topic/bins', (data) => {
             setBins(data);
           });
