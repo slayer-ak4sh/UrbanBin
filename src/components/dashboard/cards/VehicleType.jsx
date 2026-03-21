@@ -1,81 +1,24 @@
-import KPICard from '../KPICard';
-import { BarChart, Bar, ResponsiveContainer, XAxis, YAxis, Cell } from 'recharts';
-
-const VehicleType = ({ evPercentage = 45, evCount = 8, totalVehicles = 18 }) => {
-  const Icon = () => (
-    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M13 10V3L4 14h7v7l9-11h-7z" />
-    </svg>
-  );
-
-  // Data for vehicle type breakdown
-  const vehicleData = [
-    { type: 'EV', count: evCount, percentage: evPercentage },
-    { type: 'Gas', count: totalVehicles - evCount, percentage: 100 - evPercentage }
-  ];
-
-  return (
-    <KPICard
-      title="EV Fleet Utilization"
-      value={`${evPercentage}%`}
-      icon={<Icon />}
-      colorScheme="teal"
-      subText="Electric vehicles in use"
-      footer={
-        <div className="flex items-center gap-2 justify-between">
-          <span className="text-xs text-gray-600">
-            {evCount} of {totalVehicles} vehicles
-          </span>
-          <span className="text-xs font-semibold text-teal-600">Active</span>
-        </div>
-      }
-    >
-      {/* Mini Bar Chart: Vehicle Type Distribution */}
-      <div className="h-16 -mx-2 mt-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart 
-            data={vehicleData}
-            layout="vertical"
-            margin={{ top: 0, right: 30, left: 30, bottom: 0 }}
-          >
-            <XAxis type="number" hide={true} domain={[0, totalVehicles]} />
-            <YAxis dataKey="type" type="category" width={25} tick={{ fontSize: 12 }} />
-            <Bar dataKey="count" fill="#14b8a6" radius={[0, 4, 4, 0]} isAnimationActive={true}>
-              <Cell fill="#14b8a6" />
-              <Cell fill="#d1d5db" />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+const VehicleType = ({ evPercentage = 56 }) => (
+  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-3 flex items-center gap-3 h-full">
+    <div className="w-10 h-10 bg-teal-100 dark:bg-teal-900/30 rounded-xl flex items-center justify-center shrink-0">
+      <svg className="w-5 h-5 text-teal-600" fill="currentColor" viewBox="0 0 24 24">
+        <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+      </svg>
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Vehicle Type</p>
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-xl font-bold text-gray-900 dark:text-white">{evPercentage}%</span>
+        <span className="text-xs font-bold text-teal-600 dark:text-teal-400">EV</span>
       </div>
-
-      {/* Fleet Indicator Dots */}
-      <div className="mt-3">
-        <div className="flex flex-wrap gap-1">
-          {[...Array(totalVehicles)].map((_, i) => (
-            <div
-              key={i}
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                i < evCount 
-                  ? 'bg-teal-500 shadow-sm' 
-                  : 'bg-gray-300'
-              }`}
-              title={i < evCount ? 'Active EV' : 'Gas Vehicle'}
-            ></div>
-          ))}
-        </div>
-        <div className="flex justify-between text-xs text-gray-600 mt-2">
-          <span className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-teal-500"></div>
-            EV ({evCount})
-          </span>
-          <span className="flex items-center gap-1">
-            <div className="w-2 h-2 rounded-full bg-gray-300"></div>
-            Gas ({totalVehicles - evCount})
-          </span>
-        </div>
+      <div className="flex items-center gap-1 mt-1">
+        <svg className="w-4 h-4 text-teal-500 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4z"/>
+        </svg>
+        <span className="text-xs text-gray-500 dark:text-gray-400">Electric Vehicle</span>
       </div>
-    </KPICard>
-  );
-};
+    </div>
+  </div>
+);
 
 export default VehicleType;

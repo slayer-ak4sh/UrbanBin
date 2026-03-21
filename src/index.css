@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 body {
   margin: 0;
@@ -7,8 +8,25 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+  background: #f4f6fa;
 }
+
+.dark body {
+  background: #0f172a;
+}
+
+/* Leaflet popup override */
+.leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.15) !important;
+  overflow: hidden;
+}
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.4;
+}
+.leaflet-popup-tip-container { display: none; }
 
 /* ═══════════════════════════════════════════════════════
    Alert Bins Panel — scrollbar & custom marker styles
@@ -94,6 +112,21 @@ body {
 
 .animate-in {
   animation: fade-in 0.2s ease-out, zoom-in-95 0.2s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+@keyframes cardPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+.kpi-card-click {
+  animation: cardPop 0.25s ease-out;
 }
 
 /* ═══════════════════════════════════════════════════════

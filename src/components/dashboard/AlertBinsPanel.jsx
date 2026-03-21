@@ -1,224 +1,229 @@
 import { useState, useMemo } from 'react';
-import AlertBinItem from './AlertBinItem';
 
-/**
- * AlertBinsPanel — right sidebar panel showing high-fill-level alert bins.
- *
- * Props:
- *  - bins: full bin list from context
- *  - alerts: alert events from WS
- *  - selectedBinId: currently highlighted bin id
- *  - onSelectBin: callback(bin) when a bin is clicked
- *  - collapsed: external collapsed state (optional)
- *  - onToggleCollapse: callback for toggling collapse (optional)
- */
-const FILL_THRESHOLD = 75; // Bins above this % appear in the alert panel
+const SAMPLE_BINS = [
+  { id: 102, address: 'Sector 62, Noida',    fillLevel: 95, change: 82,  zone: 'Zone A' },
+  { id: 87,  address: 'Sector 15, Gurgaon',  fillLevel: 92, change: 92,  zone: 'Zone B' },
+  { id: 45,  address: 'Market Area, Delhi',  fillLevel: 91, change: 96,  zone: 'Zone C' },
+  { id: 122, address: 'Sector 20, Gurgaon',  fillLevel: 90, change: 90,  zone: 'Zone A' },
+  { id: 67,  address: 'Sector 5, Noida',     fillLevel: 90, change: 90,  zone: 'Zone B' },
+  { id: 33,  address: 'MG Road, Delhi',      fillLevel: 97, change: 78,  zone: 'Zone C' },
+  { id: 78,  address: 'Connaught Place',     fillLevel: 93, change: 85,  zone: 'Zone A' },
+];
 
-const AlertBinsPanel = ({ bins = [], alerts = [], selectedBinId, onSelectBin, routeSummary }) => {
-  const [collapsed, setCollapsed] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('fillLevel'); // fillLevel | name | priority
+const ZONES = ['All Zones', 'Zone A', 'Zone B', 'Zone C'];
 
-  // ── Derive alert bins ─────────────────────────────────────────────
-  const alertBins = useMemo(() => {
-    // Use real bins if available; otherwise fall back to sample data
-    const source = bins.length > 0 ? bins : SAMPLE_ALERT_BINS;
+const getLevel = (fill) => {
+  if (fill >= 95) return 'urgent';
+  if (fill >= 90) return 'warning';
+  return 'normal';
+};
 
-    let filtered = source
-      .filter((b) => (b.fillLevel ?? 0) >= FILL_THRESHOLD)
-      .map((b) => ({
-        ...b,
-        // Normalise an id field
-        id: b.id ?? b.binId ?? `bin-${b.lat ?? Math.random()}`,
-        name: b.name ?? b.binName ?? `Bin #${b.id ?? b.binId ?? '?'}`,
-        fillLevel: b.fillLevel ?? b.fillPercentage ?? 0,
-        change: b.change ?? null,
-      }));
+const LEVEL_CONFIG = {
+  urgent:  { label: 'Urgent',  dot: 'bg-red-500',    text: 'text-red-500',    badge: 'bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-800' },
+  warning: { label: 'Warning', dot: 'bg-orange-500', text: 'text-orange-500', badge: 'bg-orange-50 dark:bg-orange-900/20 text-orange-500 border-orange-200 dark:border-orange-800' },
+  normal:  { label: 'Normal',  dot: 'bg-green-500',  text: 'text-green-500',  badge: 'bg-green-50 dark:bg-green-900/20 text-green-500 border-green-200 dark:border-green-800' },
+};
 
-    // Text search
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (b) =>
-          b.name.toLowerCase().includes(q) ||
-          String(b.id).toLowerCase().includes(q) ||
-          (b.address ?? '').toLowerCase().includes(q)
-      );
+const MiniBar = ({ fill }) => (
+  <div className="flex items-end gap-px h-5 w-8 shrink-0">
+    {[40, 60, 50, 80, 70, fill].map((v, i) => (
+      <div key={i} className="flex-1 rounded-sm"
+        style={{
+          height: `${(v / 100) * 100}%`,
+          background: v >= 95 ? '#ef4444' : v >= 90 ? '#f97316' : '#22c55e',
+          opacity: i === 5 ? 1 : 0.35 + i * 0.1,
+        }}
+      />
+    ))}
+  </div>
+);
+
+const AlertBinsPanel = ({ bins = [], routeSummary }) => {
+  const [search,    setSearch]    = useState('');
+  const [zone,      setZone]      = useState('All Zones');
+  const [level,     setLevel]     = useState('all');
+  const [showZone,  setShowZone]  = useState(false);
+  const [showLevel, setShowLevel] = useState(false);
+
+  const source = useMemo(() => {
+    if (bins.length > 0) {
+      return bins
+        .filter(b => (b.fillLevel ?? 0) >= 90)
+        .map(b => ({
+          id:        b.id ?? b.binId,
+          address:   b.address ?? b.location?.address ?? `Sector ${b.id}, City`,
+          fillLevel: b.fillLevel ?? 0,
+          change:    b.change ?? 80,
+          zone:      b.zone ?? 'Zone A',
+        }));
     }
+    return SAMPLE_BINS;
+  }, [bins]);
 
-    // Sort
-    filtered.sort((a, b) => {
-      if (sortBy === 'fillLevel') return b.fillLevel - a.fillLevel;
-      if (sortBy === 'name') return a.name.localeCompare(b.name);
-      return b.fillLevel - a.fillLevel; // default = priority
-    });
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return source
+      .filter(b => {
+        const matchSearch = !q ||
+          String(b.id).includes(q) ||
+          b.address.toLowerCase().includes(q);
+        const matchZone  = zone === 'All Zones' || b.zone === zone;
+        const matchLevel = level === 'all' || getLevel(b.fillLevel) === level;
+        return matchSearch && matchZone && matchLevel;
+      })
+      .sort((a, b) => b.fillLevel - a.fillLevel);
+  }, [source, search, zone, level]);
 
-    return filtered;
-  }, [bins, searchQuery, sortBy]);
-
-  // ── Summary stats ────────────────────────────
-  const totalDistance = routeSummary?.totalDistance ?? '14.2 km';
-  const estimatedTime = routeSummary?.estimatedTime ?? '38 min';
+  const totalDist = routeSummary?.routeDistance ?? 82;
+  const estTime   = routeSummary?.estimatedTime ?? '2 hr 05 min';
 
   return (
-    <aside
-      className={`alert-bins-panel flex flex-col bg-gradient-to-b from-white to-gray-50 border-l-2 border-red-200 shadow-2xl transition-all duration-300 h-full ${
-        collapsed ? 'w-14' : 'w-96'
-      }`}
-    >
-      {/* ═══ Collapse Toggle ═══ */}
-      <button
-        onClick={() => setCollapsed((c) => !c)}
-        className="absolute -left-4 top-24 z-20 w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 border-2 border-white rounded-full shadow-lg flex items-center justify-center text-white hover:from-red-600 hover:to-red-700 hover:scale-110 transition-all duration-200"
-        title={collapsed ? 'Expand alerts' : 'Collapse alerts'}
-      >
-        <svg
-          className={`w-4 h-4 transition-transform duration-200 ${collapsed ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col w-[240px] shrink-0 overflow-hidden">
 
-      {collapsed ? (
-        // ── Collapsed state: icon only ──
-        <div className="flex flex-col items-center pt-6 gap-4">
-          <div className="relative animate-bounce">
-            <div className="w-10 h-10 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center shadow-lg">
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-md animate-pulse">
-              {alertBins.length}
+      {/* ── Header ── */}
+      <div className="px-3 pt-3 pb-2 border-b border-gray-100 dark:border-gray-700 shrink-0">
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-xs font-extrabold text-gray-900 dark:text-white uppercase tracking-wide">
+            Alert Bins
+            <span className="ml-1 px-1.5 py-0.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-full text-[10px] font-bold">
+              {filtered.length}
             </span>
+          </h3>
+          <div className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400">
+            <span className="font-bold text-gray-800 dark:text-gray-200">{totalDist} km</span>
+            <span>·</span>
+            <span>{estTime}</span>
           </div>
         </div>
-      ) : (
-        <>
-          {/* ═══ Panel Header ═══ */}
-          <div className="shrink-0 px-5 pt-5 pb-4 border-b-2 border-red-100 bg-gradient-to-r from-red-50 to-orange-50">
-            {/* Title Row */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-lg" />
-                <h3 className="text-base font-extrabold text-gray-800 uppercase tracking-wide">
-                  Alert Bins
-                </h3>
-                <span className="px-2 py-1 text-xs font-bold bg-gradient-to-r from-red-600 to-red-700 text-white rounded-full min-w-6 text-center shadow-md">
-                  {alertBins.length}
-                </span>
-              </div>
-              {/* Sort dropdown */}
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="text-xs bg-white border-2 border-red-200 rounded-lg px-2 py-1 text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 shadow-sm"
-              >
-                <option value="fillLevel">By Fill %</option>
-                <option value="name">By Name</option>
-              </select>
-            </div>
+        <p className="text-[9px] text-gray-400 dark:text-gray-500 mb-2">Round Trip</p>
 
-            {/* Summary Row */}
-            <div className="flex items-center gap-4 text-sm text-gray-600 bg-white rounded-lg px-3 py-2 shadow-sm">
-              <div className="flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-                <span className="font-semibold text-gray-800">{totalDistance}</span>
-              </div>
-              <div className="w-px h-4 bg-gray-300" />
-              <div className="flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="font-semibold text-gray-800">{estimatedTime}</span>
-              </div>
-            </div>
-
-            {/* Search Bar */}
-            <div className="relative mt-3">
-              <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        {/* Search */}
+        <div className="relative mb-2">
+          <svg className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search by ID or address..."
+            className="w-full pl-6 pr-2 py-1.5 text-[10px] bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
               </svg>
-              <input
-                type="text"
-                placeholder="Search bins..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 placeholder-gray-400 bg-white shadow-sm"
-              />
-            </div>
-          </div>
+            </button>
+          )}
+        </div>
 
-          {/* ═══ Scrollable Bin List ═══ */}
-          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5 alert-bins-scroll">
-            {alertBins.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-gray-400">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-3">
-                  <svg className="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <p className="text-sm font-semibold text-gray-600">No alert bins</p>
-                <p className="text-xs mt-1 text-gray-500">All bins are below {FILL_THRESHOLD}%</p>
+        {/* Filters row */}
+        <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
+          {/* Zone filter */}
+          <div className="relative flex-1">
+            <button
+              onClick={() => { setShowZone(v => !v); setShowLevel(false); }}
+              className="w-full flex items-center justify-between gap-1 px-2 py-1 text-[10px] bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:border-blue-400 transition-colors"
+            >
+              <span className="truncate">{zone}</span>
+              <svg className={`w-2.5 h-2.5 shrink-0 transition-transform ${showZone ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+            {showZone && (
+              <div className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-20 overflow-hidden">
+                {ZONES.map(z => (
+                  <button key={z} onClick={() => { setZone(z); setShowZone(false); }}
+                    className={`w-full text-left px-2.5 py-1.5 text-[10px] hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${zone === z ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>
+                    {z}
+                  </button>
+                ))}
               </div>
-            ) : (
-              alertBins.map((bin) => (
-                <AlertBinItem
-                  key={bin.id}
-                  bin={bin}
-                  isSelected={selectedBinId === bin.id}
-                  onSelect={onSelectBin}
-                />
-              ))
             )}
           </div>
 
-          {/* ═══ Footer ═══ */}
-          <div className="shrink-0 px-5 py-3 border-t-2 border-red-100 bg-gradient-to-r from-gray-50 to-gray-100">
-            <div className="flex items-center justify-between text-xs text-gray-600">
-              <span className="font-medium">Threshold: ≥{FILL_THRESHOLD}%</span>
-              <span className="flex items-center gap-1.5 font-semibold">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-sm" />
-                Live
-              </span>
-            </div>
+          {/* Level filter */}
+          <div className="relative flex-1">
+            <button
+              onClick={() => { setShowLevel(v => !v); setShowZone(false); }}
+              className="w-full flex items-center justify-between gap-1 px-2 py-1 text-[10px] bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:border-blue-400 transition-colors"
+            >
+              <span className="truncate capitalize">{level === 'all' ? 'All Levels' : level}</span>
+              <svg className={`w-2.5 h-2.5 shrink-0 transition-transform ${showLevel ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/>
+              </svg>
+            </button>
+            {showLevel && (
+              <div className="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg z-20 overflow-hidden">
+                {[['all','All Levels'],['urgent','Urgent'],['warning','Warning'],['normal','Normal']].map(([val, lbl]) => (
+                  <button key={val} onClick={() => { setLevel(val); setShowLevel(false); }}
+                    className={`w-full text-left px-2.5 py-1.5 text-[10px] hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5 ${level === val ? 'font-bold' : ''}`}>
+                    {val !== 'all' && <span className={`w-1.5 h-1.5 rounded-full ${LEVEL_CONFIG[val].dot}`}/>}
+                    <span className={val !== 'all' ? LEVEL_CONFIG[val].text : 'text-gray-700 dark:text-gray-300'}>{lbl}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-        </>
-      )}
-    </aside>
+        </div>
+      </div>
+
+      {/* ── List ── */}
+      <div className="flex-1 overflow-y-auto alert-bins-scroll" style={{ minHeight: 0 }}>
+        {filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-gray-400 dark:text-gray-500">
+            <svg className="w-8 h-8 mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p className="text-[11px] font-medium">No bins found</p>
+            <p className="text-[10px] mt-0.5">Try adjusting filters</p>
+          </div>
+        ) : (
+          filtered.map(bin => {
+            const lvl = getLevel(bin.fillLevel);
+            const cfg = LEVEL_CONFIG[lvl];
+            return (
+              <div key={bin.id} className="flex items-center gap-2 px-3 py-2 border-b border-gray-50 dark:border-gray-700/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors cursor-pointer">
+                {/* dot */}
+                <span className={`w-2 h-2 rounded-full shrink-0 animate-pulse ${cfg.dot}`}/>
+
+                {/* info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-gray-800 dark:text-gray-200">#{bin.id}</span>
+                    <span className={`text-[9px] font-bold px-1 py-0.5 rounded border ${cfg.badge}`}>{cfg.label}</span>
+                  </div>
+                  <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate mt-0.5">{bin.address}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[10px] font-bold text-red-500 flex items-center gap-0.5">
+                      <svg className="w-2 h-2" fill="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5H7z"/></svg>
+                      {bin.fillLevel}%
+                    </span>
+                    <span className="text-[10px] font-bold text-green-500 flex items-center gap-0.5">
+                      <svg className="w-2 h-2" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14l5-5 5 5H7z"/></svg>
+                      {bin.change}%
+                    </span>
+                    <span className="text-[9px] text-gray-400 dark:text-gray-500">{bin.zone}</span>
+                  </div>
+                </div>
+
+                <MiniBar fill={bin.fillLevel}/>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ── Footer ── */}
+      <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-700 shrink-0 flex items-center justify-between">
+        <span className="text-[9px] text-gray-400 dark:text-gray-500">Threshold ≥ 90%</span>
+        <span className="flex items-center gap-1 text-[9px] text-green-500 font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"/>
+          Live
+        </span>
+      </div>
+    </div>
   );
 };
-
-// ── Sample data (used when no WS bins are available) ────────────────
-const SAMPLE_ALERT_BINS = [
-  { id: 'bin-001', name: 'MG Road Bin #1', fillLevel: 97, change: 4, lat: 28.6139, lng: 77.209, address: 'MG Road, Sector 14', wasteType: 'mixed', lastUpdated: new Date().toISOString() },
-  { id: 'bin-002', name: 'Central Park Bin #3', fillLevel: 94, change: 6, lat: 28.6212, lng: 77.2165, address: 'Central Park, Block C', wasteType: 'organic', lastUpdated: new Date().toISOString() },
-  { id: 'bin-003', name: 'Market Bin #7', fillLevel: 92, change: 3, lat: 28.6065, lng: 77.2016, address: 'Sarojini Market', wasteType: 'recyclable', lastUpdated: new Date().toISOString() },
-  { id: 'bin-004', name: 'Station Rd Bin #12', fillLevel: 91, change: -2, lat: 28.6328, lng: 77.2197, address: 'Near Railway Station', wasteType: 'mixed', lastUpdated: new Date().toISOString() },
-  { id: 'bin-005', name: 'Hospital Lane #4', fillLevel: 89, change: 5, lat: 28.6185, lng: 77.2054, address: 'AIIMS Campus Gate', wasteType: 'biomedical', lastUpdated: new Date().toISOString() },
-  { id: 'bin-006', name: 'Green Park Bin #2', fillLevel: 88, change: 1, lat: 28.5594, lng: 77.2069, address: 'Green Park Metro Stn', wasteType: 'organic', lastUpdated: new Date().toISOString() },
-  { id: 'bin-007', name: 'Hauz Khas Bin #9', fillLevel: 87, change: 7, lat: 28.5494, lng: 77.2001, address: 'Hauz Khas Village', wasteType: 'mixed', lastUpdated: new Date().toISOString() },
-  { id: 'bin-008', name: 'Lajpat Nagar Bin #5', fillLevel: 86, change: 2, lat: 28.5700, lng: 77.2390, address: 'Lajpat Nagar Central', wasteType: 'recyclable', lastUpdated: new Date().toISOString() },
-  { id: 'bin-009', name: 'Nehru Place #11', fillLevel: 84, change: -1, lat: 28.5488, lng: 77.2533, address: 'Nehru Place Market', wasteType: 'e-waste', lastUpdated: new Date().toISOString() },
-  { id: 'bin-010', name: 'Connaught Pl #6', fillLevel: 82, change: 3, lat: 28.6315, lng: 77.2167, address: 'Connaught Place, Ring', wasteType: 'mixed', lastUpdated: new Date().toISOString() },
-  { id: 'bin-011', name: 'Saket Bin #8', fillLevel: 81, change: 0, lat: 28.5244, lng: 77.2066, address: 'Saket District Centre', wasteType: 'organic', lastUpdated: new Date().toISOString() },
-  { id: 'bin-012', name: 'Defence Col #3', fillLevel: 80, change: 4, lat: 28.5740, lng: 77.2300, address: 'Defence Colony Market', wasteType: 'mixed', lastUpdated: new Date().toISOString() },
-  { id: 'bin-013', name: 'INA Market #2', fillLevel: 79, change: 2, lat: 28.5742, lng: 77.2103, address: 'INA Market South', wasteType: 'organic', lastUpdated: new Date().toISOString() },
-  { id: 'bin-014', name: 'Lodhi Colony #10', fillLevel: 78, change: 1, lat: 28.5862, lng: 77.2273, address: 'Lodhi Colony Main Rd', wasteType: 'mixed', lastUpdated: new Date().toISOString() },
-  { id: 'bin-015', name: 'Jangpura Bin #4', fillLevel: 77, change: -3, lat: 28.5824, lng: 77.2425, address: 'Jangpura Extension', wasteType: 'recyclable', lastUpdated: new Date().toISOString() },
-  { id: 'bin-016', name: 'Kalkaji Bin #7', fillLevel: 76, change: 5, lat: 28.5382, lng: 77.2590, address: 'Kalkaji Mandir Metro', wasteType: 'mixed', lastUpdated: new Date().toISOString() },
-  { id: 'bin-017', name: 'Vasant Kunj #1', fillLevel: 75, change: 0, lat: 28.5196, lng: 77.1588, address: 'Vasant Kunj Sector D', wasteType: 'organic', lastUpdated: new Date().toISOString() },
-  { id: 'bin-018', name: 'South Ext Bin #14', fillLevel: 75, change: 2, lat: 28.5744, lng: 77.2215, address: 'South Extension Part II', wasteType: 'mixed', lastUpdated: new Date().toISOString() },
-];
 
 export default AlertBinsPanel;

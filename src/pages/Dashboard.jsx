@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useState } from 'react';
 import { Toaster } from 'react-hot-toast';
 import MainLayout from '../components/layout/MainLayout';
 import KPIMetrics from '../components/dashboard/KPIMetrics';
@@ -7,87 +7,241 @@ import AlertBinsPanel from '../components/dashboard/AlertBinsPanel';
 import { useApp } from '../contexts/AppContext';
 import { useAlertNotifications } from '../hooks/useAlertNotifications.jsx';
 
+const SAMPLE_BINS = [
+  { id: 101, location: 'Sec 12',      fillLevel: 45, status: 'Normal', priority: 'Low',  serving: false },
+  { id: 102, location: 'Sec 62',      fillLevel: 95, status: 'Alert',  priority: 'High', serving: true  },
+  { id: 87,  location: 'Sec 15',      fillLevel: 92, status: 'Alert',  priority: 'High', serving: false },
+  { id: 45,  location: 'Market Area', fillLevel: 91, status: 'Alert',  priority: 'High', serving: false },
+];
+
+const fillColor  = (v) => v >= 90 ? 'text-red-500' : v >= 70 ? 'text-orange-500' : 'text-green-500';
+const statusColor = (s) => s === 'Alert' ? 'text-red-500' : 'text-green-600';
+const statusBg    = (s) => s === 'Alert' ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20';
+
+/* ── Card wrapper ── */
+const Card = ({ children, className = '' }) => (
+  <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 ${className}`}>
+    {children}
+  </div>
+);
+
+/* ── Route Summary ── */
+const RouteSummaryCard = () => (
+  <Card className="p-5 flex-1">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-base font-bold text-gray-900 dark:text-white">Route Summary</h3>
+      <div className="flex gap-2">
+        <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full font-medium">-90%</span>
+        <span className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full font-medium">-90%</span>
+      </div>
+    </div>
+
+    <div className="flex items-start gap-4 mb-4">
+      <div className="w-12 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center shrink-0">
+        <svg className="w-7 h-7 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4z"/>
+        </svg>
+      </div>
+      <div>
+        <span className="text-2xl font-bold text-gray-900 dark:text-white">82 km</span>
+        <p className="text-xs text-gray-400 dark:text-gray-500">Total Distance</p>
+      </div>
+      <div className="ml-auto text-right">
+        <p className="text-xs text-gray-500 dark:text-gray-400">Estimated Time: <span className="font-bold text-gray-800 dark:text-gray-200">2 hr 05 min</span></p>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Round Trip: <span className="font-semibold text-gray-700 dark:text-gray-300">82 km</span></p>
+      </div>
+    </div>
+
+    <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-xl p-3">
+      <p className="text-xs font-bold text-gray-700 dark:text-gray-300 mb-2">Recommended Vehicle:</p>
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-lg flex items-center justify-center shrink-0">
+          <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+          </svg>
+        </div>
+        <div>
+          <p className="text-sm">
+            <span className="text-teal-600 font-semibold">Electric Vehicle </span>
+            <span className="text-teal-700 dark:text-teal-400 font-extrabold">(EV)</span>
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Reason: Distance &gt; 100k threshold</p>
+        </div>
+      </div>
+    </div>
+  </Card>
+);
+
+/* ── Bin Detail ── */
+const BinDetailCard = () => (
+  <Card className="p-5 flex-1">
+    <div className="flex items-center justify-between mb-4">
+      <h3 className="text-base font-bold text-gray-900 dark:text-white">Bin #102</h3>
+      <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-2.5 py-1.5">
+        <svg className="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <span className="text-xs text-gray-400 dark:text-gray-400">Search</span>
+      </div>
+    </div>
+
+    <div className="flex items-center gap-3 mb-4">
+      <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center shrink-0">
+        <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+        </svg>
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Euutian Vehicle</p>
+        <div className="w-40 h-3 rounded-full mt-1.5" style={{ background: 'linear-gradient(to right, #22c55e, #84cc16, #eab308, #f97316, #ef4444)' }}/>
+      </div>
+    </div>
+
+    <div className="space-y-2.5 border-t border-gray-100 dark:border-gray-700 pt-3">
+      <p className="text-sm text-gray-600 dark:text-gray-400">
+        Distance ≤ <span className="font-bold text-blue-600">100 km</span> threshold
+      </p>
+      <div className="flex items-center gap-2">
+        <p className="text-sm text-gray-600 dark:text-gray-400">Estimated Savings:</p>
+        <span className="font-bold text-gray-800 dark:text-gray-200">1,200</span>
+        <div className="w-px h-4 bg-gray-200 dark:bg-gray-600"/>
+        <span className="font-bold text-gray-800 dark:text-gray-200">18 kg</span>
+      </div>
+    </div>
+  </Card>
+);
+
+/* ── Bin List Table ── */
+const BinListTable = () => {
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const filtered = SAMPLE_BINS.filter(b =>
+    String(b.id).includes(search) || b.location.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">Bin List°</h3>
+          <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-2.5 py-1.5">
+            <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">Filter</span>
+            <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+          </div>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search..."
+            className="text-xs border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 placeholder-gray-400 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400 w-32"
+          />
+        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Showing 1 to {filtered.length} of <span className="font-semibold">150 Bins</span>
+        </p>
+      </div>
+
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-100 dark:border-gray-700">
+            {['Bin ID','Location','Fill %','Status','Priority','Action'].map(h => (
+              <th key={h} className="text-left py-2.5 px-3 text-xs font-semibold text-gray-500 dark:text-gray-400">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map((bin, i) => (
+            <tr key={bin.id} className={`border-b border-gray-50 dark:border-gray-700/50 hover:bg-gray-50 dark:hover:bg-gray-700/40 transition-colors`}>
+              <td className="py-3 px-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center">
+                    <svg className="w-3 h-3 text-gray-500 dark:text-gray-400" fill="currentColor" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  </div>
+                  <span className="font-semibold text-gray-800 dark:text-gray-200">{bin.id}</span>
+                </div>
+              </td>
+              <td className="py-3 px-3">
+                <div className="flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                  <span className="text-gray-700 dark:text-gray-300 text-xs">{bin.location}</span>
+                </div>
+              </td>
+              <td className="py-3 px-3">
+                <span className={`font-bold text-xs flex items-center gap-0.5 ${fillColor(bin.fillLevel)}`}>
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14l5-5 5 5H7z" transform="rotate(180 12 12)"/></svg>
+                  {bin.fillLevel}%
+                </span>
+              </td>
+              <td className="py-3 px-3">
+                <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${statusBg(bin.status)} ${statusColor(bin.status)}`}>
+                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+                  {bin.status}
+                </span>
+              </td>
+              <td className="py-3 px-3">
+                <span className={`text-xs font-semibold ${bin.priority === 'High' ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>{bin.priority}</span>
+              </td>
+              <td className="py-3 px-3">
+                <div className="flex items-center gap-2">
+                  {bin.serving ? (
+                    <button className="flex items-center gap-1 text-xs border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 font-medium">
+                      <svg className="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7"/></svg>
+                      Serving
+                    </button>
+                  ) : (
+                    <button className="flex items-center gap-1 text-xs bg-[#3b6ef5] hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg font-medium shadow-sm">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+                      Add to Route
+                    </button>
+                  )}
+                  <button className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="flex items-center justify-end gap-1 mt-4 pt-3 border-t border-gray-100 dark:border-gray-700">
+        <button className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+        </button>
+        {[2,3,4,5].map(n => (
+          <button key={n} onClick={() => setPage(n)}
+            className={`w-7 h-7 flex items-center justify-center rounded text-xs font-medium transition-colors ${page === n ? 'bg-[#3b6ef5] text-white' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}>
+            {n}
+          </button>
+        ))}
+        <button className="w-7 h-7 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </Card>
+  );
+};
+
+/* ── Dashboard ── */
 const Dashboard = () => {
-  const { bins, alerts, analytics, wsConnected, selectedBin, selectBin } = useApp();
-  const isLoading = false;
-
-  // Fire toast notifications when bins cross the 90% threshold
+  const { bins, analytics, selectedBin, selectBin } = useApp();
   useAlertNotifications(bins, 90, selectBin);
-
-  useEffect(() => {
-    console.log('Dashboard mounted');
-    console.log('WebSocket connected:', wsConnected);
-    console.log('Bins:', bins);
-    console.log('Alerts:', alerts);
-    console.log('Analytics:', analytics);
-  }, [wsConnected, bins, alerts, analytics]);
 
   return (
     <MainLayout>
-      {/* Toast notifications container */}
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          style: { zIndex: 9999 },
-        }}
-      />
-
-      <div className="flex h-full gap-0 relative">
-        {/* ── Main Content Area ── */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gradient-to-br from-gray-50 to-gray-100">
-          {/* Page Header with Gradient */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <div>
-              <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Dashboard</h2>
-              <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                Real-time waste management insights
-              </p>
-            </div>
-            <div className="flex items-center gap-3 px-4 py-2.5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
-              <div className={`w-2.5 h-2.5 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse shadow-lg`}></div>
-              <span className="text-sm text-gray-700 font-semibold">
-                {wsConnected ? 'Live Connected' : 'Disconnected'}
-              </span>
-            </div>
-          </div>
-
-          {/* KPI Metrics Section */}
-          <div className="w-full">
-            <KPIMetrics bins={bins} analytics={analytics} isLoading={isLoading} />
-          </div>
-
-          {/* Bin Locations Map with Enhanced Styling */}
-          <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200 hover:shadow-xl transition-all duration-300">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800">Bin Locations Map</h3>
-                  <p className="text-xs text-gray-500">Interactive real-time tracking</p>
-                </div>
-              </div>
-            </div>
+      <Toaster position="top-right" toastOptions={{ style: { zIndex: 9999 } }} />
+      <div className="p-4 pt-5 space-y-4">
+        <KPIMetrics bins={bins} analytics={analytics} />
+        <div className="flex gap-3">
+          <div className="flex-1 min-w-0">
             <BinLocationsMap bins={bins} selectedBin={selectedBin} />
           </div>
+          <AlertBinsPanel bins={bins} routeSummary={analytics} />
         </div>
-
-        {/* ── Right Sidebar: Alert Bins Panel (Fixed Position) ── */}
-        <div className="shrink-0">
-          <AlertBinsPanel
-            bins={bins}
-            alerts={alerts}
-            selectedBinId={selectedBin?.id}
-            onSelectBin={selectBin}
-            routeSummary={analytics}
-          />
+        <div className="flex gap-3">
+          <RouteSummaryCard />
+          <BinDetailCard />
         </div>
+        <BinListTable />
       </div>
     </MainLayout>
   );
